@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from PIL import ImageDraw
+from PIL import ImageDraw, Image
 from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtCore import Qt, QTimer
@@ -30,7 +30,6 @@ class MyOpenGLWidget(QOpenGLWidget):
         self.gl_timer_interval = 128
         self.gl_timer.start(self.gl_timer_interval)
         self.gl_time_laps = 0
-       
 
     def version_status(self):
         version = glGetString(GL_VERSION)
@@ -38,29 +37,36 @@ class MyOpenGLWidget(QOpenGLWidget):
         version = glGetString(GL_SHADING_LANGUAGE_VERSION)
         print(f"OpenGL shader language: {version.decode('utf-8')}")
 
+    def create_default_image(self):
+        pass
+
     def create_frame(self):
         # load current texture
         #######
         # optomize the image
         # use PLI
-        texel = TextureGen(file_path="images/default.png")
-        if texel.load_image_file():
-            texel.texture_wrap()
-            texel.load_texture()
-            self.frame_texel = texel
+
+        texel = TextureGen()
+        texel.create_image_data(dims=(800, 600))
+        texel.gen_texture()
+        texel.load_texture()
+        # texel.empty_texture(800, 600)
+        self.frame_texel = texel
 
         # create fragment shader
         frameBuffer = glGenFramebuffers(1)
         self.frame_buffer = frameBuffer
         glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer)
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.frame_texel.texture_id, 0)
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                               GL_TEXTURE_2D, self.frame_texel.texture_id, 0)
 
         # create and attach a depth render buffer
         renderBuffer = glGenRenderbuffers(1)
         self.render_buffer = renderBuffer
         glBindRenderbuffer(GL_RENDERBUFFER, renderBuffer)
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 600, 600)
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, renderBuffer)
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 800, 600)
+        glFramebufferRenderbuffer(
+            GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, renderBuffer)
 
         # Check if the framebuffer is complete
         status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
@@ -72,12 +78,15 @@ class MyOpenGLWidget(QOpenGLWidget):
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
         # glBindRenderbuffer(GL_RENDERBUFFER, 0)
 
-    
     def create_screen(self):
-        vertex = np.array([(-1.0, 1.0, 0.0), (1.0, 1.0, 0.0), (-1.0, -1.0, 0.0), (1.0, 1.0, 0.0), (-1.0, -1.0, 0.0), (1.0, -1.0, 0.0)], np.float32)
-        color = np.array([(1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)], np.float32)
-        tex_coord = np.array([(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)], np.float32)
-        self.screen_vao = VertexBuffer(vertices= vertex, color=color, texels= tex_coord)
+        vertex = np.array([(-1.0, 1.0, 0.0), (1.0, 1.0, 0.0), (-1.0, -1.0, 0.0),
+                          (1.0, 1.0, 0.0), (-1.0, -1.0, 0.0), (1.0, -1.0, 0.0)], np.float32)
+        color = np.array([(1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
+                         (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)], np.float32)
+        tex_coord = np.array([(0.0, 0.0), (1.0, 0.0), (0.0, 1.0),
+                             (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)], np.float32)
+        self.screen_vao = VertexBuffer(
+            vertices=vertex, color=color, texels=tex_coord)
         self.screen_vao.buff_vex_object()
         self.screen_vao.buff_vertices()
         self.screen_vao.buff_colors()
@@ -85,20 +94,19 @@ class MyOpenGLWidget(QOpenGLWidget):
         self.screen_vao.unbind_vex_array()
 
     def create_frame_plane(self):
-        vertex = np.array([(-1.0, 1.0, 0.0), (1.0, 1.0, 0.0), (-1.0, -1.0, 0.0), (1.0, 1.0, 0.0), (-1.0, -1.0, 0.0), (1.0, -1.0, 0.0)], np.float32)
-        color = np.array([(1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)], np.float32)
-        tex_coord = np.array([(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)], np.float32)
-        self.frame_vao = VertexBuffer(vertices= vertex, color=color, texels= tex_coord)
+        vertex = np.array([(-1.0, 1.0, 0.0), (1.0, 1.0, 0.0), (-1.0, -1.0, 0.0),
+                          (1.0, 1.0, 0.0), (-1.0, -1.0, 0.0), (1.0, -1.0, 0.0)], np.float32)
+        color = np.array([(1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0),
+                         (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)], np.float32)
+        tex_coord = np.array([(-1.0, 1.0), (1.0, 1.0), (-1.0, -1.0),
+                             (1.0, 1.0), (-1.0, -1.0), (1.0, -1.0)], np.float32)
+        self.frame_vao = VertexBuffer(
+            vertices=vertex, color=color, texels=tex_coord)
         self.frame_vao.buff_vex_object()
         self.frame_vao.buff_vertices()
         self.frame_vao.buff_colors()
         self.frame_vao.buff_texels()
         self.frame_vao.unbind_vex_array()
-
-        
-
-
-
 
     def initializeGL(self):
         # Add any OpenGL initialization code here
@@ -106,12 +114,14 @@ class MyOpenGLWidget(QOpenGLWidget):
         self.version_status()
 
         # compile fragment shader program
-        Shader_program = ShaderProgram("shaderProgram/shaderOne")
+        Shader_program = ShaderProgram(
+            "fragmentShading/shaderProgram/shaderTwo")
         Shader_program.makeShaderProgram()
         self.fragmentShader = Shader_program
 
         # compile screen shader program
-        screen_shader = ShaderProgram("shaderProgram/screenShader")
+        screen_shader = ShaderProgram(
+            "fragmentShading/shaderProgram/screenShader")
         screen_shader.makeShaderProgram()
         self.screenShader = screen_shader
 
@@ -124,17 +134,19 @@ class MyOpenGLWidget(QOpenGLWidget):
         # set frame vao
         self.create_frame_plane()
 
-        
-
     def resizeGL(self, width, height):
         # Handle resizing of the OpenGL widget here
         glViewport(0, 0, width, height)
-
-
+        # update screen resolution
+        glUseProgram(self.fragmentShader.shaderProgram)
+        location = glGetUniformLocation(
+            self.fragmentShader.shaderProgram, "sResolution")
+        glUniform2f(location, width, height)
+        glUseProgram(0)
 
     def paintGL(self):
         # gl time laps
-        self.gl_time_laps += .3
+        self.gl_time_laps += .1
         # print(self.gl_time_laps)
 
         # Add your OpenGL rendering code here
@@ -146,25 +158,23 @@ class MyOpenGLWidget(QOpenGLWidget):
         # glEnable(GL_DEPTH_TEST)
         self.frame_vao.bind_vex_array()
         glUseProgram(self.fragmentShader.shaderProgram)
-
+        glViewport(0, 0, 800, 600)
         # enable attributes of frame_vao
         glEnableVertexAttribArray(0)
         glEnableVertexAttribArray(1)
         glEnableVertexAttribArray(2)
 
         # unifrom variable of frame_vao
-        location = glGetUniformLocation(self.fragmentShader.shaderProgram, "time_laps")
+        location = glGetUniformLocation(
+            self.fragmentShader.shaderProgram, "iTime")
         glUniform1f(location, self.gl_time_laps)
-       
 
         glDrawArrays(GL_TRIANGLES, 0, self.frame_vao.vertices_bytes)
         glBindFramebuffer(GL_FRAMEBUFFER, 2)
         # print(self.frame_texel.image.width, self.frame_texel.image.width)
 
-
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glClearColor(0, 0, 0, 0)
-
 
         # enable the screen vao
         self.screen_vao.bind_vex_array()
@@ -179,11 +189,11 @@ class MyOpenGLWidget(QOpenGLWidget):
 
         # unifrom texture sample
         glBindTexture(GL_TEXTURE_2D, self.frame_texel.texture_id)
-        location = glGetUniformLocation(self.screenShader.shaderProgram, "textureSample")
+        location = glGetUniformLocation(
+            self.screenShader.shaderProgram, "textureSample")
         glUniform1i(location, 0)
 
         glDrawArrays(GL_TRIANGLES, 0, self.screen_vao.vertices_bytes)
-        
 
 
 class MainWindow(QMainWindow):
@@ -216,4 +226,4 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

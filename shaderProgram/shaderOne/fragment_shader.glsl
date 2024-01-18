@@ -5,11 +5,23 @@ in vec2 texture_coords;
 
 out vec4 outColor;
 
-const float pi = 3.1415;
+uniform float iTime; // time laps
+uniform vec2 sResolution;
+// uniform vec2 iResolution;
 
-uniform float time_laps; // time laps
+// global variables
+vec2 iResolution = vec2(1.0, 1.0);
 
-// color palette funtions
+// open code
+
+/* This animation is the material of my first youtube tutorial about creative 
+   coding, which is a video in which I try to introduce programmers to GLSL 
+   and to the wonderful world of shaders, while also trying to share my recent 
+   passion for this community.
+                                       Video URL: https://youtu.be/f4s1h2YETNY
+*/
+
+//https://iquilezles.org/articles/palettes/
 vec3 palette( float t ) {
     vec3 a = vec3(0.5, 0.5, 0.5);
     vec3 b = vec3(0.5, 0.5, 0.5);
@@ -19,33 +31,34 @@ vec3 palette( float t ) {
     return a + b*cos( 6.28318*(c*t+d) );
 }
 
-void main()
-{
-    // polar coords
-    vec2 coords = vec2(texture_coords.x - 0.5, texture_coords.y - 0.5);
-    vec2 coords_0 = coords;
+//https://www.shadertoy.com/view/mtyGWy
+void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
+    vec2 uv = (fragCoord * 2.0 - iResolution.xy) / iResolution.y;
+    vec2 uv0 = uv;
     vec3 finalColor = vec3(0.0);
+    
+    for (float i = 0.0; i < 4.0; i++) {
+        uv = fract(uv * 1.5) - 0.5;
 
-    for(float i = 0; i < 4; i++){
+        float d = length(uv) * exp(-length(uv0));
 
-        coords = vec2(fract(coords.x * 3) - 0.5, fract(coords.y * 3) - 0.5);
-        float dist = sqrt( pow(coords.x, 2) + pow(coords.y, 2));
+        vec3 col = palette(length(uv0) + i*.4 + iTime*.4);
 
-        // colors
-        float dist_0 = sqrt( pow(coords_0.x, 2) + pow(coords_0.y, 2));
-        vec3 cols = palette(dist_0 + i*0.4 + time_laps/16);
+        d = sin(d*8. + iTime)/8.;
+        d = abs(d);
 
-        dist = dist *  exp(- dist_0);
-        dist = sin(dist*pi*8 + time_laps) + 1;
-        dist = dist / 8;
-        dist = abs(dist);
-        dist = 0.01 / dist;
-        dist = pow(dist, 1.2);
+        d = pow(0.01 / d, 1.2);
 
-        // set out color
-        finalColor += dist * cols;
+        finalColor += col * d;
     }
-
-
-    outColor = vec4(finalColor, 1);
+        
+    fragColor = vec4(finalColor, 1.0);
+}
+// call open code
+void main(){ 
+    iResolution = vec2(sResolution.x, sResolution.y);
+    vec2 fragCoord = vec2(gl_FragCoord.x, gl_FragCoord.y);
+    vec4 frag_color = vec4(fragColor, 1);
+    mainImage(frag_color, fragCoord);
+    outColor = frag_color;
 }

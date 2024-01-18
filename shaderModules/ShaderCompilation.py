@@ -95,15 +95,16 @@ if __name__ == "__main__":
 
         def initUI(self):
             # Create an instance of your custom OpenGL widget
-            gl_widget = ShaderProgram("shaderProg/shaderOne")
+            gl_widget = ShaderProgram("fragmentShading/shaderProgram/shaderOne")
+            gl_widget.makeShaderProgram()
 
             # Set up the main layout and add the OpenGL widget to it
-            layout = QVBoxLayout()
-            layout.addWidget(gl_widget)
+            # layout = QVBoxLayout()
+            # layout.addWidget(gl_widget)
 
             # Create a central widget to hold the layout and set it as the main window's central widget
             central_widget = QWidget(self)
-            central_widget.setLayout(layout)
+            # central_widget.setLayout(layout)
             self.setCentralWidget(central_widget)
 
             self.setWindowTitle("OpenGL Widget Window")
